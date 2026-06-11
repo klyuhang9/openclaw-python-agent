@@ -6,6 +6,19 @@ from tools.shell import execute_shell
 from tools.python_exec import execute_python
 from tools.screenshot import capture_screenshot
 from tools.web import web_search, scrape_webpage
+from tools.browser import (
+    browser_navigate,
+    browser_snapshot,
+    browser_click,
+    browser_type,
+    browser_upload,
+    browser_screenshot,
+    browser_scroll,
+    browser_press_key,
+    browser_click_text,
+    browser_upload_file,
+    browser_click_selector,
+)
 import tools.memory_tools as _mt
 import tools.skill_tools as _st
 
@@ -352,6 +365,187 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
             },
         },
     },
+    # ── Browser automation ────────────────────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_navigate",
+            "description": "Open a URL in the browser.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "Full URL to navigate to"},
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_snapshot",
+            "description": (
+                "Take a snapshot of the current browser page. "
+                "Returns title, URL, and a numbered list of interactive elements "
+                "with refs (e1, e2, …). Use refs with browser_click / browser_type / browser_upload."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_click",
+            "description": "Click an element on the current page using its ref from the last snapshot.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ref": {"type": "string", "description": "Element ref, e.g. 'e3'"},
+                },
+                "required": ["ref"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_type",
+            "description": "Type text into an input or textarea using its ref from the last snapshot.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ref":   {"type": "string",  "description": "Element ref, e.g. 'e5'"},
+                    "text":  {"type": "string",  "description": "Text to type"},
+                    "clear": {"type": "boolean", "description": "Clear existing content first (default true)", "default": True},
+                },
+                "required": ["ref", "text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_upload",
+            "description": "Upload a local file to a file-input element using its ref from the last snapshot.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ref":       {"type": "string", "description": "Element ref of the file input, e.g. 'e7'"},
+                    "file_path": {"type": "string", "description": "Absolute path to the local file to upload"},
+                },
+                "required": ["ref", "file_path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_screenshot",
+            "description": "Take a screenshot of the current browser page to visually inspect its state.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_scroll",
+            "description": "Scroll the current browser page. Use for lazy-loaded feeds or revealing off-screen buttons.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "direction": {
+                        "type": "string",
+                        "enum": ["down", "up", "top", "bottom"],
+                        "description": "Scroll direction (default: down)",
+                        "default": "down",
+                    },
+                    "amount": {
+                        "type": "integer",
+                        "description": "Pixels to scroll (default: 600, ignored for top/bottom)",
+                        "default": 600,
+                    },
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_click_selector",
+            "description": (
+                "Click an element by CSS selector, optionally at a specific "
+                "pixel position WITHIN the element. Use when snapshot can't "
+                "see internal structure (closed shadow DOM web components, e.g. "
+                "xiaohongshu's <xhs-publish-btn>). position_x / position_y are "
+                "offsets from the element's top-left corner. Pass -1 to click center."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {"type": "string", "description": "CSS selector, e.g. 'xhs-publish-btn'"},
+                    "position_x": {"type": "number", "description": "X offset within element (-1 = center)", "default": -1},
+                    "position_y": {"type": "number", "description": "Y offset within element (-1 = center)", "default": -1},
+                },
+                "required": ["selector"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_upload_file",
+            "description": (
+                "Upload a local file to the page's hidden <input type=file>. "
+                "Use this for xiaohongshu / douyin upload UIs where snapshot can't "
+                "see the file input (it's hidden behind a styled button). "
+                "accept_hint can disambiguate when multiple inputs exist "
+                "(e.g. 'image' or '.jpg' to prefer the image one)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {"type": "string", "description": "Absolute path to the local file"},
+                    "accept_hint": {"type": "string", "description": "Optional accept-attr substring to disambiguate, e.g. 'image' or '.jpg'", "default": ""},
+                },
+                "required": ["file_path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_click_text",
+            "description": (
+                "Click the first visible element with the given text. Use this "
+                "as a fallback when snapshot doesn't show the element (e.g. "
+                "div-based buttons in React/Vue SPAs). Pierces shadow DOM and "
+                "iframes automatically."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Visible text to match, e.g. '上传图文'"},
+                    "exact": {"type": "boolean", "description": "Require exact match (default false: substring)", "default": False},
+                },
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_press_key",
+            "description": "Press a keyboard key on the page (e.g. 'Enter', 'Escape', 'Tab', 'ArrowDown'). Useful for confirming dialogs or submitting forms.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "description": "Key name, e.g. 'Enter'"},
+                },
+                "required": ["key"],
+            },
+        },
+    },
 ]
 
 _TOOL_REGISTRY = {
@@ -371,6 +565,17 @@ _TOOL_REGISTRY = {
     "unload_skill": _st.unload_skill,
     "create_skill": _st.create_skill,
     "update_skill": _st.update_skill,
+    "browser_navigate":   browser_navigate,
+    "browser_snapshot":   browser_snapshot,
+    "browser_click":      browser_click,
+    "browser_type":       browser_type,
+    "browser_upload":     browser_upload,
+    "browser_screenshot": browser_screenshot,
+    "browser_scroll":     browser_scroll,
+    "browser_press_key":  browser_press_key,
+    "browser_click_text": browser_click_text,
+    "browser_upload_file": browser_upload_file,
+    "browser_click_selector": browser_click_selector,
 }
 
 

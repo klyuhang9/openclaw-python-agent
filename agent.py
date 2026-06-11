@@ -122,7 +122,12 @@ class Agent:
                 for tc in tool_calls:
                     name, result = results[tc.id]
                     self.display.show_tool_result(name, result)
-                    if name == "capture_screenshot" and not result.startswith("Error:"):
+                    if (
+                        name in ("capture_screenshot", "browser_screenshot")
+                        and isinstance(result, str)
+                        and not result.startswith("Error")
+                        and len(result) > 100
+                    ):
                         # Send as multimodal content so the model can see the image
                         content: Any = [
                             {"type": "text", "text": "Screenshot captured successfully."},
